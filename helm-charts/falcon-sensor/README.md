@@ -10,14 +10,16 @@ more.
 The Falcon Helm chart has been tested to deploy on the following Kubernetes distributions:
 
 * Amazon Elastic Kubernetes Service (EKS)
+  * Daemonset (node) sensor support for EKS nodes
+  * Container sensor support for EKS Fargate nodes
 * Azure Kubernetes Service (AKS)
-* Google Kubernetes Engine (GKE) - DaemonSet support for Ubuntu nodes only, Container sensor for GCOS nodes.
+* Google Kubernetes Engine (GKE)
 * Rancher K3s
-* Red Hat OpenShift Container Platform 4.6+
 
 # Dependencies
 
-1. Requires a x86_64 Kubernetes cluster
+1. Requires a x86_64 or ARM64 Kubernetes cluster
+1. Deploying CrowdStrike sensors to multi-architecture Kubernetes clusters is not currently supported.
 1. Must be a CrowdStrike customer with access to the Falcon Linux Sensor (container image) and Falcon Container from the CrowdStrike Container Registry.
 1. Kubernetes nodes must be Linux distributions supported by CrowdStrike.
 1. Before deploying the Helm chart, you should have a Falcon Linux Sensor and/or Falcon Container sensor in your own container registry or use CrowdStrike's registry before installing the Helm Chart. See the Deployment Considerations for more.
@@ -27,9 +29,8 @@ The Falcon Helm chart has been tested to deploy on the following Kubernetes dist
 
 | Helm chart Version      | Falcon Sensor Version             |
 |:------------------------|:----------------------------------|
-| `<= 1.6.x`              | `<= 6.34.x`                       |
-| `>= 1.7.x && <= 1.17.x` | `>= 6.35.x && < 6.49.x`           |
-| `>= 1.18.x`             | `>= 6.49.x`                       |
+| `<= 1.26.x`             | `< 7.05.x`                        |
+| `>= 1.27.x`             | `>= 7.06.x`                       |
 
 # Installation
 
@@ -84,13 +85,6 @@ kubectl label --overwrite ns my-existing-namespace \
   pod-security.kubernetes.io/enforce=privileged
 ```
 
-If your cluster is OpenShift version 4.11+, you will need to add an additional label to disable added OpenShift functionality that will sync Pod Security Standard policies based on the default Security Context Constraints (SCC).
-Run the following command replacing `my-existing-namespace` with the namespace that you have installed the falcon sensors e.g. `falcon-system`.
-```
-kubectl label --overwrite ns my-existing-namespace \
-  security.openshift.io/scc.podSecurityLabelSync=false
-```
-
 If desired to silence the warning and change the auditing level for the Pod Security Standard, add the following labels
 ```
 kubectl label ns --overwrite my-existing-namespace pod-security.kubernetes.io/audit=privileged
@@ -125,12 +119,14 @@ The following tables lists the more common configurable parameters of the chart 
 | :-------------------------------- | :--------------------------------------------------------------------- | :---------------------------------------------------------------------- |
 | `node.enabled`                    | Enable installation on the Kubernetes node                             | `true`                                                                  |
 | `node.backend`                    | Choose sensor backend (`kernel`,`bpf`). Sensor 6.49+ only              | kernel                                                                  |
+| `node.gke.autopilot`              | Enable if running on GKE Autopilot clusters                            | `false`                                                                 |
 | `node.image.repository`           | Falcon Sensor Node registry/image name                                 | `falcon-node-sensor`                                                    |
 | `node.image.tag`                  | The version of the official image to use                               | `latest`   (Use node.image.digest instead for security and production)  |
 | `node.image.digest`               | The sha256 digest of the official image to use                         | None       (Use instead of the image tag for security and production)   |
 | `node.image.pullPolicy`           | Policy for updating images                                             | `Always`                                                                |
 | `node.image.pullSecrets`          | Pull secrets for private registry                                      | None       (Conflicts with node.image.registryConfigJSON)               |
 | `node.image.registryConfigJSON`   | base64 encoded docker config json for the pull secret                  | None       (Conflicts with node.image.pullSecrets)                      |
+| `node.daemonset.resources`        | Configure Node sensor resource requests and limits (eBPF mode only)    | None       (Minimum setting of 250m CPU and 500Mi memory allowed). Default for GKE Autopilot is 750m CPU and 1.5Gi memory.<br><br><div class="warning">:warning: **Warning**:<br>If you configure resources, you must configure the CPU and Memory Resource requests and limits correctly for your node instances for the node sensor to run properly!</div> |
 | `falcon.cid`                      | CrowdStrike Customer ID (CID)                                          | None       (Required)                                                   |
 
 `falcon.cid` and `node.image.repository` are required values.
@@ -204,7 +200,7 @@ The following tables lists the more common configurable parameters of the chart 
 | `container.image.pullPolicy`                     | Policy for updating images                                                  | `Always`                     |
 | `container.image.pullSecrets.enable`             | Enable pull secrets for private registry                                    | `false`                      |
 | `container.image.pullSecrets.namespaces`         | List of Namespaces to pull the Falcon sensor from an authenticated registry | None                         |
-| `container.image.pullSecrets.allNamespaces`      | Use Helm's lookup function to deploy the pull secret to all namespaces      | `false`                      |
+| `container.image.pullSecrets.allNamespaces`      | Use Helm's lookup function to deploy the pull secret to all namespaces. Helm chart must be re-run everytime a new namespace is created. | `false`  |
 | `container.image.pullSecrets.registryConfigJSON` | base64 encoded docker config json for the pull secret                       | None                         |
 | `container.image.sensorResources`                | The requests and limits of the sensor ([see example below](#example-using-containerimagesensorresources))                      | None                         |
 | `falcon.cid`                                     | CrowdStrike Customer ID (CID)                                               | None       (Required)        |

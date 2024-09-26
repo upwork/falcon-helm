@@ -28,7 +28,6 @@
                 "client_id": {
                     "type": "string",
                     "pattern": "^[0-9a-zA-Z]+$"
-
                 },
                 "client_secret": {
                     "type": "string",
@@ -36,7 +35,15 @@
                 },
                 "cloud_region": {
                     "type": "string",
-                    "enum": ["us-1", "us-2", "eu-1", "us-gov-1"]
+                    "enum": [
+                        "us-1",
+                        "us-2",
+                        "eu-1",
+                        "us-gov-1"
+                    ]
+                },
+                "existingSecret": {
+                    "type": "string"
                 },
                 "integration_gateway": {
                     "type": "object",
@@ -50,17 +57,40 @@
                         },
                         "level": {
                             "type": "string",
-                            "enum": ["ERROR", "WARN", "INFO", "DEBUG"],
+                            "enum": [
+                                "ERROR",
+                                "WARN",
+                                "INFO",
+                                "DEBUG"
+                            ],
                             "default": "INFO"
-
                         },
                         "older_than_days_threshold": {
                             "type": "integer"
+                        },
+                        "detections_exclude_clouds": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "AWS",
+                                "Azure",
+                                "GCP",
+                                "unrecognized",
+                                null
+                            ],
+                            "example": [
+                                "GCP"
+                            ]
                         },
                         "severity_threshold": {
                             "type": "integer"
                         },
                         "worker_threads": {
+                            "type": "integer"
+                        },
+                        "offset": {
                             "type": "integer"
                         }
                     }
@@ -99,133 +129,265 @@
         "podSecurityContext": {
             "type": "object"
         },
-        "push": {
+        "credentials_store": {
             "type": "object",
             "properties": {
-                "aws_security_hub": {
+                "store": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "ssm",
+                        "secrets_manager",
+                        null
+                    ]
+                },
+                "ssm": {
                     "type": "object",
                     "properties": {
-                        "enabled": {
-                            "type": "boolean"
+                        "region": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "client_id": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "client_secret": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
                         }
-                    },
-                    "if": { "properties": { "enabled": { "const": true } } },
-                    "then": {
+                    }
+                },
+                "secrets_manager": {
+                    "type": "object",
+                    "properties": {
+                        "secret_name": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "client_id_key": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "region": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "client_secret_key": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        }
+                    }
+                }
+            },
+            "push": {
+                "type": "object",
+                "properties": {
+                    "aws_security_hub": {
+                        "type": "object",
                         "properties": {
-                            "region": {
-                                "type": "string"
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "if": {
+                            "properties": {
+                                "enabled": {
+                                    "const": true
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "region": {
+                                    "type": "string"
+                                },
+                                "confirm_instance": {
+                                    "type": "boolean"
+                                }
                             }
                         }
-                    }
-                },
-                "azure_log_analytics": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        }
                     },
-                    "if": { "properties": { "enabled": { "const": true } } },
-                    "then": {
+                    "aws_sqs": {
+                        "type": "object",
                         "properties": {
-                            "primary_key": {
-                                "type": "string"
-                            },
-                            "workspace_id": {
-                                "type": "string"
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "if": {
+                            "properties": {
+                                "enabled": {
+                                    "const": true
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "region": {
+                                    "type": "string"
+                                },
+                                "sqs_queue_name": {
+                                    "type": "string"
+                                }
                             }
                         }
-                    }
-                },
-                "chronicle": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        }
                     },
-                    "if": { "properties": { "enabled": { "const": true } } },
-                    "then": {
+                    "azure_log_analytics": {
+                        "type": "object",
                         "properties": {
-                            "region": {
-                                "type": "string"
-                            },
-                            "security_key": {
-                                "type": "string"
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "if": {
+                            "properties": {
+                                "enabled": {
+                                    "const": true
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "primary_key": {
+                                    "type": "string"
+                                },
+                                "workspace_id": {
+                                    "type": "string"
+                                },
+                                "arc_autodiscovery": {
+                                    "type": "boolean"
+                                }
                             }
                         }
-                    }
-                },
-                "cloudtrail_lake": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        }
                     },
-                    "if": { "properties": { "enabled": { "const": true } } },
-                    "then": {
+                    "chronicle": {
+                        "type": "object",
                         "properties": {
-                            "region": {
-                                "type": "string"
-                            },
-                            "channel_arn": {
-                                "type": "string"
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "if": {
+                            "properties": {
+                                "enabled": {
+                                    "const": true
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "region": {
+                                    "type": "string"
+                                },
+                                "service_account": {
+                                    "type": "string"
+                                },
+                                "customer_id": {
+                                    "type": "string"
+                                }
                             }
                         }
-                    }
-                },
-                "gcp_security_command_center": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        }
-                    }
-                },
-                "vmware_workspace_one": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
+                    },
+                    "cloudtrail_lake": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "if": {
+                            "properties": {
+                                "enabled": {
+                                    "const": true
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "region": {
+                                    "type": "string"
+                                },
+                                "channel_arn": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     },
-                    "if": { "properties": { "enabled": { "const": true } } },
-                    "then": {
+                    "gcp_security_command_center": {
+                        "type": "object",
                         "properties": {
-                            "syslog_host": {
-                                "type": "string"
-                            },
-                            "syslog_port": {
-                                "type": "string"
-                            },
-                            "token": {
-                                "type": "string"
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "vmware_workspace_one": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "if": {
+                            "properties": {
+                                "enabled": {
+                                    "const": true
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "syslog_host": {
+                                    "type": "string"
+                                },
+                                "syslog_port": {
+                                    "type": "string"
+                                },
+                                "token": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
                 }
-            }
-        },
-        "replicaCount": {
-            "type": "integer"
-        },
-        "resources": {
-            "type": "object"
-        },
-        "securityContext": {
-            "type": "object",
-            "properties": {
-                "runAsNonRoot": {
-                    "type": "boolean"
-                },
-                "runAsUser": {
-                    "type": "integer"
+            },
+            "replicaCount": {
+                "type": "integer"
+            },
+            "resources": {
+                "type": "object"
+            },
+            "securityContext": {
+                "type": "object",
+                "properties": {
+                    "runAsNonRoot": {
+                        "type": "boolean"
+                    },
+                    "runAsUser": {
+                        "type": "integer"
+                    }
                 }
+            },
+            "tolerations": {
+                "type": "array"
             }
-        },
-        "tolerations": {
-            "type": "array"
         }
     }
 }
